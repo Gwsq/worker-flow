@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Worker Flow Agent",
+  "version": "3.0.0",
+  "description": "Служебные вкладки, защитный оверлей, автоотклики hh.ru и заполнение Яндекс/Google Форм",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.hh.ru/*",
+    "https://forms.yandex.ru/*",
+    "https://docs.google.com/forms/*",
+    "http://localhost:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.hh.ru/*",
+        "https://forms.yandex.ru/*",
+        "https://docs.google.com/forms/*"
+      ],
+      "js": ["scripts/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

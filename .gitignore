@@ -1,0 +1,15 @@
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+*.sqlite
+*.db
+backend/app/*.db
+backend/*.db
+.idea/
+.vscode/
+.env

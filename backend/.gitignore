@@ -1,0 +1,20 @@
+# Python / Virtualenv
+venv/
+.venv/
+env/
+__pycache__/
+*.py*.pyc
+*.pyo
+*.pyd
+.DS_Store
+
+# SQLite databases (чтобы не утекли локальные данные)
+*.sqlite
+*.db
+backend/app/*.db
+backend/*.db
+
+# Docker & IDE
+.idea/
+.vscode/
+.env

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Worker Flow // Admin Console</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bg: '#070709', surface: '#101015', card: '#16161d', border: '#262633', amber: '#f59e0b', emerald: '#10b981'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #070709; color: #f4f4f5; font-family: 'Inter', -apple-system, sans-serif; }
+    input, textarea { background-color: #101015 !important; border: 1px solid #262633 !important; color: #fff !important; }
+    input:focus, textarea:focus { border-color: #f59e0b !important; outline: none; }
+  </style>
+</head>
+<body class="min-h-screen pb-16">
+
+  <!-- ADMIN LOGIN SCREEN -->
+  <div id="admin-auth-screen" class="fixed inset-0 z-50 bg-bg flex items-center justify-center p-4">
+    <div class="bg-card border border-amber-500/30 rounded-2xl max-w-md w-full p-8 space-y-6 shadow-2xl">
+      <div class="flex items-center gap-3 justify-center">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-black text-xl">👑</div>
+        <div>
+          <h1 class="text-lg font-bold text-white tracking-tight">Admin Console</h1>
+          <p class="text-xs text-amber-400/80 font-mono">Глобальное управление SaaS</p>
+        </div>
+      </div>
+      <div id="admin-auth-alert" class="hidden p-3.5 rounded-xl text-xs border bg-rose-500/10 border-rose-500/30 text-rose-400"></div>
+      <form onsubmit="event.preventDefault(); submitAdminLogin();" class="space-y-4">
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1.5 font-medium">Admin Email:</label>
+          <input type="email" id="admin_email" required placeholder="admin@worker.flow" class="w-full text-xs px-3.5 py-2.5 rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1.5 font-medium">Master Password:</label>
+          <input type="password" id="admin_password" required placeholder="••••••••••••" class="w-full text-xs px-3.5 py-2.5 rounded-xl">
+        </div>
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black rounded-xl text-xs font-black uppercase tracking-wider transition">
+          Войти в Консоль
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div id="admin-app-content" class="hidden">
+    <nav class="border-b border-border bg-card px-6 py-4">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-black font-black">👑</div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">Worker Flow // Admin Console</span>
+              <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">MASTER SAAS</span>
+            </div>
+            <p id="admin-user-email" class="text-[11px] text-zinc-400 font-mono"></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="loadAdminOverview()" class="px-3.5 py-2 bg-surface hover:bg-zinc-800 border border-border rounded-xl text-xs text-zinc-300">🔄 Обновить</button>
+          <button onclick="adminLogout()" class="px-3.5 py-2 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 rounded-xl text-xs text-rose-400 font-semibold">Выйти</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 mt-8 space-y-8">
+      <!-- KPIs -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-card border border-border p-5 rounded-2xl">
+          <div class="text-xs text-zinc-400 mb-1">Всего пользователей</div>
+          <div id="adm-total-users" class="text-3xl font-black text-white">0</div>
+        </div>
+        <div class="bg-card border border-border p-5 rounded-2xl">
+          <div class="text-xs text-emerald-400 mb-1">Подтвержденных аккаунтов</div>
+          <div id="adm-verified-users" class="text-3xl font-black text-emerald-400">0</div>
+        </div>
+        <div class="bg-card border border-border p-5 rounded-2xl">
+          <div class="text-xs text-amber-400 mb-1">Всего откликов платформой</div>
+          <div id="adm-total-applied" class="text-3xl font-black text-amber-400">0</div>
+        </div>
+      </div>
+
+      <!-- GLOBAL API & AI SETTINGS -->
+      <div class="bg-card border border-amber-500/30 rounded-2xl p-6 space-y-4">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚙️</span>
+          <h2 class="text-base font-bold text-white">Глобальные настройки API, Лимитов и AI (Применяются ко всем пользователям)</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Мастер OpenRouter API Key:</label>
+            <input type="password" id="adm_openrouter_key" placeholder="sk-or-v1-..." class="w-full text-xs px-3.5 py-2.5 rounded-xl">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Модель OpenRouter:</label>
+            <input type="text" id="adm_openrouter_model" placeholder="meta-llama/llama-3.3-70b-instruct" class="w-full text-xs px-3.5 py-2.5 rounded-xl">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Глобальный мин. скор (% для отклика):</label>
+            <input type="number" id="adm_min_score" class="w-full text-xs px-3.5 py-2.5 rounded-xl">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Глобальный суточный лимит откликов:</label>
+            <input type="number" id="adm_daily_limit" class="w-full text-xs px-3.5 py-2.5 rounded-xl">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-zinc-400 mb-1">Глобальная карьерная легенда (базовый контекст для всех клиентов):</label>
+            <textarea id="adm_global_career_legend" rows="3" class="w-full text-xs p-3 rounded-xl"></textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-zinc-400 mb-1">Глобальные инструкции по стилю писем для AI:</label>
+            <textarea id="adm_global_ai_instructions" rows="2" class="w-full text-xs p-3 rounded-xl"></textarea>
+          </div>
+        </div>
+        <button onclick="saveAdminSettings()" class="py-2.5 px-6 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-xs font-bold uppercase transition">
+          💾 Сохранить глобальные настройки SaaS
+        </button>
+      </div>
+
+      <!-- Users Table -->
+      <div class="bg-card border border-border rounded-2xl p-6">
+        <h2 class="text-base font-bold text-white mb-4">👥 Управление пользователями</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-surface text-zinc-400 uppercase border-b border-border">
+              <tr>
+                <th class="p-3.5">ID</th><th class="p-3.5">Email</th><th class="p-3.5">Лимит / Скор</th><th class="p-3.5">Токены ($)</th><th class="p-3.5">Резюме</th><th class="p-3.5">Откликов</th><th class="p-3.5 text-right">Действия</th>
+              </tr>
+            </thead>
+            <tbody id="adm-users-tbody" class="divide-y divide-border text-zinc-300"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function getAdminToken() { return localStorage.getItem('wf_admin_token'); }
+
+    async function adminFetch(url, options = {}) {
+      const token = getAdminToken();
+      const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401 || res.status === 403) {
+        adminLogout();
+        throw new Error('Доступ запрещен');
+      }
+      return res;
+    }
+
+    async function submitAdminLogin() {
+      const email = document.getElementById('admin_email').value.trim();
+      const password = document.getElementById('admin_password').value.trim();
+      const alertEl = document.getElementById('admin-auth-alert');
+      const res = await fetch('/api/v1/auth/admin-login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) { alertEl.innerText = data.detail || 'Ошибка'; alertEl.classList.remove('hidden'); return; }
+      localStorage.setItem('wf_admin_token', data.access_token);
+      initAdminApp();
+    }
+
+    function adminLogout() {
+      localStorage.removeItem('wf_admin_token');
+      document.getElementById('admin-app-content').classList.add('hidden');
+      document.getElementById('admin-auth-screen').classList.remove('hidden');
+    }
+
+    async function loadAdminOverview() {
+      const res = await adminFetch('/api/v1/admin/overview');
+      const data = await res.json();
+      document.getElementById('admin-user-email').innerText = data.admin_email;
+      document.getElementById('adm-total-users').innerText = data.total_users;
+      document.getElementById('adm-verified-users').innerText = data.verified_users;
+      document.getElementById('adm-total-applied').innerText = data.total_platform_applied;
+
+      const g = data.global_settings || {};
+      document.getElementById('adm_openrouter_key').value = g.openrouter_key || '';
+      document.getElementById('adm_openrouter_model').value = g.openrouter_model || '';
+      document.getElementById('adm_min_score').value = g.min_score || '60';
+      document.getElementById('adm_daily_limit').value = g.daily_limit || '50';
+      document.getElementById('adm_global_career_legend').value = g.global_career_legend || '';
+      document.getElementById('adm_global_ai_instructions').value = g.global_ai_instructions || '';
+
+      document.getElementById('adm-users-tbody').innerHTML = (data.users || []).map(u => `
+        <tr class="hover:bg-surface/60">
+          <td class="p-3.5 font-mono text-zinc-400">#${u.id}</td>
+          <td class="p-3.5 font-bold text-white">${u.email}</td>
+          <td class="p-3.5">
+            <div class="text-[11px] text-zinc-400 cursor-pointer hover:text-amber-400 transition" onclick="changeUserLimit(${u.id}, ${u.daily_limit})">
+              Лимит: <span class="font-bold text-white">${u.daily_limit !== null ? u.daily_limit : (g.daily_limit || 50) + ' (Глобальный)'}</span> ✎
+            </div>
+            <div class="text-[10px] text-zinc-500 mt-0.5">${u.is_verified ? 'Почта: ✅' : 'Почта: ❌'}</div>
+          </td>
+          <td class="p-3.5 font-mono text-[11px]">
+            <div class="text-indigo-400">${(u.tokens_used || 0).toLocaleString('ru-RU')} tk</div>
+            <div class="text-emerald-400">~$${((u.tokens_used || 0) / 1000000 * 0.40).toFixed(4)}</div>
+          </td>
+          <td class="p-3.5">${u.resumes_count}</td>
+          <td class="p-3.5 font-bold text-emerald-400">${u.applied_count} / ${u.total_vacancies}</td>
+          <td class="p-3.5 text-right space-x-2">
+            ${!u.is_verified ? `<button onclick="verifyUser(${u.id})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px]">Подтвердить</button>` : ''}
+            ${u.role !== 'admin' ? `<button onclick="deleteUser(${u.id})" class="px-2.5 py-1 bg-rose-500/15 text-rose-400 border border-rose-500/30 rounded-lg text-[11px]">Удалить</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function saveAdminSettings() {
+      const payload = {
+        openrouter_key: document.getElementById('adm_openrouter_key').value.trim(),
+        openrouter_model: document.getElementById('adm_openrouter_model').value.trim(),
+        min_score: document.getElementById('adm_min_score').value.trim(),
+        daily_limit: document.getElementById('adm_daily_limit').value.trim(),
+        global_career_legend: document.getElementById('adm_global_career_legend').value.trim(),
+        global_ai_instructions: document.getElementById('adm_global_ai_instructions').value.trim()
+      };
+      const res = await adminFetch('/api/v1/admin/settings', {
+        method: 'POST', body: JSON.stringify(payload)
+      });
+      if (res.ok) alert('✅ Глобальные настройки SaaS (лимиты и скор) успешно применены ко всем пользователям!');
+    }
+
+    async function changeUserLimit(id, current) {
+      const val = prompt('Введите новый суточный лимит откликов для пользователя (оставьте пустым или -1 для возврата к глобальному лимиту):', current !== null ? current : '');
+      if (val === null) return;
+      const limit = val.trim() === '' ? -1 : parseInt(val);
+      await adminFetch(`/api/v1/admin/users/${id}/limit`, { method: 'POST', body: JSON.stringify({ limit }) });
+      loadAdminOverview();
+    }
+    
+    async function verifyUser(id) { await adminFetch(`/api/v1/admin/users/${id}/verify`, { method: 'POST' }); loadAdminOverview(); }
+    async function deleteUser(id) { if (!confirm('Удалить?')) return; await adminFetch(`/api/v1/admin/users/${id}`, { method: 'DELETE' }); loadAdminOverview(); }
+
+    function initAdminApp() {
+      if (getAdminToken()) {
+        document.getElementById('admin-app-content').classList.remove('hidden');
+        document.getElementById('admin-auth-screen').classList.add('hidden');
+        loadAdminOverview();
+      } else {
+        document.getElementById('admin-app-content').classList.add('hidden');
+        document.getElementById('admin-auth-screen').classList.remove('hidden');
+      }
+    }
+    initAdminApp();
+  </script>
+</body>
+</html>

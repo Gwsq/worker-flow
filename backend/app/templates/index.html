@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Worker Flow // Super Custom Magic Resume</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;700;900&family=Merriweather:wght@300;400;700&family=Playfair+Display:wght@500;700;900&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bg: '#09090b', surface: '#121216', card: '#18181f', border: '#272732', primary: '#6366f1', emerald: '#10b981'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #09090b; color: #f4f4f5; font-family: 'Inter', sans-serif; }
+    input, textarea, select { background-color: #121216 !important; border: 1px solid #272732 !important; color: #f4f4f5 !important; }
+    input:focus, textarea:focus, select:focus { border-color: #6366f1 !important; outline: none; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
+    .tab-btn.active { background: #6366f1; color: white; border-color: #6366f1; }
+    .glass { background: rgba(24, 24, 31, 0.85); backdrop-filter: blur(12px); }
+  </style>
+</head>
+<body class="min-h-screen pb-16">
+
+  <!-- AUTH SCREEN -->
+  <div id="auth-screen" class="fixed inset-0 z-50 bg-bg flex items-center justify-center p-4">
+    <div class="bg-card border border-border rounded-2xl max-w-md w-full p-8 space-y-6 shadow-2xl">
+      <div class="flex items-center gap-3 justify-center">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white text-xl shadow-lg">W</div>
+        <div>
+          <h1 class="text-lg font-bold text-white tracking-tight">Worker Flow</h1>
+          <p class="text-xs text-zinc-400">Автоотклики и Super Custom Resume</p>
+        </div>
+      </div>
+      <div class="flex bg-surface p-1.5 rounded-xl border border-border">
+        <button type="button" onclick="switchAuthMode('login')" id="auth-tab-login" class="flex-1 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white transition">🔑 Вход</button>
+        <button type="button" onclick="switchAuthMode('register')" id="auth-tab-register" class="flex-1 py-2 text-xs font-bold rounded-lg text-zinc-400 hover:text-white transition">✨ Регистрация</button>
+      </div>
+      <div id="auth-alert" class="hidden p-3.5 rounded-xl text-xs border leading-relaxed"></div>
+      <form onsubmit="event.preventDefault(); submitAuth();" class="space-y-4">
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1.5 font-medium">Email:</label>
+          <input type="email" id="auth_email" required placeholder="name@example.com" class="w-full text-xs px-3.5 py-2.5 rounded-xl">
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1.5 font-medium">Пароль:</label>
+          <input type="password" id="auth_password" required placeholder="••••••••" class="w-full text-xs px-3.5 py-2.5 rounded-xl">
+        </div>
+        <button type="submit" id="auth-submit-btn" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition">Войти</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app-content" class="hidden">
+    <nav class="sticky top-0 z-30 glass border-b border-border px-6 py-4">
+      <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white shadow-lg">W</div>
+          <div>
+            <span class="font-bold text-base tracking-tight text-white">Worker Flow</span>
+            <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">PRO</span>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5 bg-surface p-1.5 rounded-xl border border-border">
+          <button onclick="switchTab('queue')" id="tab-queue" class="tab-btn active text-xs font-medium px-3 py-2 rounded-lg transition"><span data-i18n="nav_queue">🚀 Очередь</span></button>
+          <button onclick="switchTab('builder')" id="tab-builder" class="tab-btn text-xs font-medium px-3 py-2 rounded-lg text-zinc-400 transition">✨ Супер Редактор Резюме</button>
+          <button onclick="switchTab('kb')" id="tab-kb" class="tab-btn text-xs font-medium px-3 py-2 rounded-lg text-zinc-400 transition">🧠 База знаний</button>
+          <button onclick="switchTab('hr')" id="tab-hr" class="tab-btn text-xs font-medium px-3 py-2 rounded-lg text-zinc-400 transition">💬 HR ответы</button>
+          <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn text-xs font-medium px-3 py-2 rounded-lg text-zinc-400 transition"><span data-i18n="nav_settings">⚙️ Настройки</span></button>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <div class="flex items-center gap-3 bg-surface border border-border px-3 py-1.5 rounded-xl">
+            <div class="text-right">
+              <div class="text-[10px] text-zinc-400 font-bold uppercase">Sync Code</div>
+              <div id="ui-sync-code" class="text-xs font-mono font-black text-indigo-400 select-all cursor-pointer">ЗАГРУЗКА...</div>
+            </div>
+            <div class="h-6 w-px bg-border"></div>
+            <div id="ui-tg-status" class="text-[10px] font-bold px-2 py-1 rounded bg-zinc-800 text-zinc-500">TG не привязан</div>
+          </div>
+          <button onclick="logout()" class="bg-surface border border-border text-zinc-400 hover:text-rose-400 px-3 py-2 rounded-xl">Выйти</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 mt-8">
+      
+      <!-- KPI -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-card border border-border p-5 rounded-2xl"><div class="text-xs text-zinc-400 mb-1">Проверено</div><div id="kpi-total" class="text-2xl font-bold text-white">0</div></div>
+        <div class="bg-card border border-border p-5 rounded-2xl"><div class="text-xs text-emerald-400 mb-1">Отклики</div><div id="kpi-applied" class="text-2xl font-bold text-emerald-400">0</div></div>
+        <div class="bg-card border border-border p-5 rounded-2xl"><div class="text-xs text-amber-400 mb-1">Отсеяно</div><div id="kpi-skipped" class="text-2xl font-bold text-amber-400">0</div></div>
+        <div class="bg-card border border-border p-5 rounded-2xl"><div class="text-xs text-indigo-400 mb-1">Сегодня</div><div class="text-2xl font-bold text-indigo-400"><span id="metric-today">0</span> / <span id="metric-limit">50</span></div></div>
+      </div>
+
+      <!-- TAB 1: QUEUE -->
+      <section id="view-queue" class="space-y-8">
+        <div class="bg-card border border-border rounded-2xl p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-base font-bold text-white">📋 История откликов</h2>
+            <button onclick="downloadHistoryCSV()" class="text-xs bg-surface hover:bg-zinc-800 text-indigo-400 border border-border px-3 py-1.5 rounded-lg transition shadow-sm shadow-indigo-500/10">
+              📥 Скачать CSV
+            </button>
+          </div>
+          <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-surface text-zinc-400 uppercase border-b border-border"><tr><th class="p-3.5">Вакансия</th><th class="p-3.5">Резюме</th><th class="p-3.5">Скор</th><th class="p-3.5">Статус</th><th class="p-3.5">Обоснование</th></tr></thead><tbody id="vacancies-tbody" class="divide-y divide-border text-zinc-300"></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- TAB 2: SUPER CUSTOM RESUME BUILDER -->
+      <section id="view-builder" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Левая панель: Ручной ввод + AI Проверка/Правка -->
+          <div class="lg:col-span-5 bg-card border border-border rounded-2xl p-6 space-y-5 max-h-[85vh] overflow-y-auto pr-2">
+            <div class="flex items-center justify-between">
+              <h2 class="text-base font-bold text-white">✍️ Ручной ввод & AI-Правка</h2>
+              <span class="text-[10px] bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/30 font-mono">100% КОНТРОЛЬ</span>
+            </div>
+
+            <!-- Стилизация и дизайн -->
+            <div class="p-4 bg-surface rounded-xl border border-border space-y-3">
+              <div class="text-xs font-bold text-indigo-400 uppercase">🎨 Дизайн и Кастомизация</div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] text-zinc-400 mb-1">Макет / Стили:</label>
+                  <select id="cfg_layout" onchange="updateLivePreview()" class="w-full text-xs px-2.5 py-1.5 rounded-lg">
+                    <option value="modern-dark">🌌 Modern Dark</option>
+                    <option value="classic-paper">📄 Classic Paper</option>
+                    <option value="executive-minimal">⚡ Executive Minimal</option>
+                    <option value="creative-accent">🎨 Creative Accent</option>
+                    <option value="neo-brutalism">🧊 Neo-Brutalism</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] text-zinc-400 mb-1">Шрифт:</label>
+                  <select id="cfg_font" onchange="updateLivePreview()" class="w-full text-xs px-2.5 py-1.5 rounded-lg">
+                    <option value="'Inter', sans-serif">Inter (Clean)</option>
+                    <option value="'Roboto', sans-serif">Roboto</option>
+                    <option value="'Playfair Display', serif">Playfair (Editorial)</option>
+                    <option value="'Merriweather', serif">Merriweather (Classic)</option>
+                    <option value="'Fira Code', monospace">Fira Code (Dev/Mono)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] text-zinc-400 mb-1">Цвет акцента:</label>
+                  <select id="cfg_accent" onchange="updateLivePreview()" class="w-full text-xs px-2.5 py-1.5 rounded-lg">
+                    <option value="#6366f1">Indigo (Фиолетовый)</option>
+                    <option value="#10b981">Emerald (Изумрудный)</option>
+                    <option value="#f59e0b">Amber (Янтарный)</option>
+                    <option value="#ef4444">Rose (Красный)</option>
+                    <option value="#3b82f6">Blue (Синий)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] text-zinc-400 mb-1">Фон блоков:</label>
+                  <select id="cfg_card_bg" onchange="updateLivePreview()" class="w-full text-xs px-2.5 py-1.5 rounded-lg">
+                    <option value="default">Стандартный</option>
+                    <option value="glass">Стеклянный (Glassmorphism)</option>
+                    <option value="solid">Плотный контрастный</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Контакты и фото -->
+            <div class="space-y-2.5">
+              <div class="text-xs font-bold text-zinc-300 uppercase">1. Шапка и Контакты</div>
+              <input type="file" accept="image/*" onchange="handlePhotoUpload(event)" class="w-full text-xs text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:bg-surface file:text-indigo-400">
+              <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="edit_name" placeholder="ФИО" oninput="updateLivePreview()" class="text-xs px-3 py-2 rounded-xl">
+                <input type="text" id="edit_role" placeholder="Желаемая должность" oninput="updateLivePreview()" class="text-xs px-3 py-2 rounded-xl">
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="edit_email" placeholder="Email" oninput="updateLivePreview()" class="text-xs px-3 py-2 rounded-xl">
+                <input type="text" id="edit_phone" placeholder="Телефон / Telegram" oninput="updateLivePreview()" class="text-xs px-3 py-2 rounded-xl">
+              </div>
+            </div>
+
+            <!-- Саммари с кнопкой AI-проверки -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-xs font-bold text-zinc-300 uppercase">2. О себе (Summary)</span>
+                <button onclick="aiPolishField('summary')" class="text-[10px] px-2 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 rounded-md transition">✨ AI-проверка и правка</button>
+              </div>
+              <textarea id="edit_summary" rows="3" placeholder="Расскажите о себе..." oninput="updateLivePreview()" class="w-full text-xs p-3 rounded-xl"></textarea>
+            </div>
+
+            <!-- Опыт работы -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-xs font-bold text-zinc-300 uppercase">3. Опыт работы</span>
+                <button onclick="addExperienceBlock()" class="text-[11px] text-indigo-400 hover:underline">+ Место работы</button>
+              </div>
+              <div id="experience_inputs_container" class="space-y-3"></div>
+            </div>
+
+            <!-- Навыки -->
+            <div class="space-y-2">
+              <div class="text-xs font-bold text-zinc-300 uppercase">4. Навыки (через запятую)</div>
+              <input type="text" id="edit_skills" placeholder="Python, Управление, Маркетинг..." oninput="updateLivePreview()" class="w-full text-xs px-3 py-2 rounded-xl">
+            </div>
+
+            <button onclick="saveMagicResumeToPool()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/20">
+              💾 Сохранить в пул откликов
+            </button>
+          </div>
+
+          <!-- Правая панель: Live Preview с кастомными шрифтами и стилями -->
+          <div class="lg:col-span-7 bg-card border border-border rounded-2xl p-6 space-y-4 flex flex-col">
+            <div class="flex justify-between items-center border-b border-border pb-3">
+              <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Super Custom Live Preview</span>
+              <button onclick="window.print()" class="px-4 py-1.5 bg-surface hover:bg-zinc-800 border border-border text-zinc-200 rounded-xl text-xs font-semibold">🖨️ Скачать в PDF</button>
+            </div>
+
+            <div id="resume-preview-card" class="flex-1 rounded-2xl p-8 space-y-6 shadow-2xl transition-all min-h-[600px]">
+              <div id="prev_header" class="flex items-center gap-5 pb-6 border-b border-inherit">
+                <img id="prev_avatar" src="" class="w-20 h-20 rounded-2xl object-cover border-2 shadow-md hidden">
+                <div class="space-y-1">
+                  <h3 id="prev_name" class="text-2xl font-black tracking-tight">Имя Фамилия</h3>
+                  <p id="prev_role" class="text-sm font-semibold">Должность</p>
+                  <p id="prev_contacts" class="text-xs font-mono opacity-80">email • phone</p>
+                </div>
+              </div>
+              <div class="space-y-1.5">
+                <h4 id="prev_sum_title" class="text-xs font-bold uppercase tracking-wider">О себе</h4>
+                <p id="prev_summary" class="text-xs leading-relaxed opacity-90">Текст саммари...</p>
+              </div>
+              <div class="space-y-2">
+                <h4 id="prev_exp_title" class="text-xs font-bold uppercase tracking-wider">Опыт работы</h4>
+                <div id="prev_experience_list" class="space-y-4 text-xs"></div>
+              </div>
+              <div class="space-y-2">
+                <h4 id="prev_ski_title" class="text-xs font-bold uppercase tracking-wider">Ключевые навыки</h4>
+                <div id="prev_skills_list" class="flex flex-wrap gap-1.5"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 3: KB -->
+      <section id="view-kb" class="hidden space-y-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-6 bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 class="text-base font-bold text-white">🧠 База знаний</h2>
+            <div><label class="block text-xs text-zinc-400 mb-1">Легенда:</label><textarea id="career_legend" rows="4" class="w-full text-xs p-3 rounded-xl"></textarea></div>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div><label class="block text-xs text-zinc-400 mb-1">ЗП (₽):</label><input type="text" id="salary" class="w-full text-xs px-3 py-2 rounded-xl"></div>
+              <div><label class="block text-xs text-zinc-400 mb-1">Telegram:</label><input type="text" id="telegram" placeholder="@username" class="w-full text-xs px-3 py-2 rounded-xl"></div>
+              <div><label class="block text-xs text-zinc-400 mb-1">WhatsApp:</label><input type="text" id="whatsapp" placeholder="+7 999 ..." class="w-full text-xs px-3 py-2 rounded-xl"></div>
+              <div><label class="block text-xs text-zinc-400 mb-1">Телефон:</label><input type="text" id="phone_contact" placeholder="+7 999 ..." class="w-full text-xs px-3 py-2 rounded-xl"></div>
+              <div><label class="block text-xs text-zinc-400 mb-1">Почта:</label><input type="text" id="email_contact" placeholder="mail@example.com" class="w-full text-xs px-3 py-2 rounded-xl"></div>
+              <div><label class="block text-xs text-zinc-400 mb-1">Доп. связь (VK/Skype):</label><input type="text" id="extra_contact" class="w-full text-xs px-3 py-2 rounded-xl"></div>
+            </div>
+            <button onclick="saveAllSettings()" class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold">💾 Сохранить</button>
+          </div>
+          <div class="lg:col-span-6 bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 class="text-base font-bold text-white">📑 Пул резюме</h2>
+            <div id="resumes-list" class="space-y-3"></div>
+            <div class="border-t border-border pt-4 space-y-2.5">
+              <input type="text" id="new_resume_title" placeholder="Название" class="w-full text-xs px-3 py-2 rounded-xl">
+              <textarea id="new_resume_content" rows="3" placeholder="Опыт..." class="w-full text-xs p-3 rounded-xl"></textarea>
+              <button onclick="addResume()" class="w-full py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold">Добавить</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: HR -->
+      <section id="view-hr" class="hidden">
+        <div class="max-w-2xl bg-card border border-border rounded-2xl p-6 space-y-4">
+          <h2 class="text-base font-bold text-white">💬 HR Ответы</h2>
+          <textarea id="hr_message" rows="4" placeholder="Вопрос рекрутера..." class="w-full text-xs p-3 rounded-xl"></textarea>
+          <input type="text" id="hr_hint" placeholder="Нюанс..." class="w-full text-xs px-3 py-2 rounded-xl">
+          <button onclick="generateHRReply()" class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold">✨ Сгенерировать</button>
+          <textarea id="hr_reply_output" rows="5" class="w-full text-xs p-3 rounded-xl font-mono"></textarea>
+        </div>
+      </section>
+
+      <!-- TAB 5: SETTINGS -->
+      <section id="view-settings" class="hidden">
+        <div class="max-w-2xl bg-card border border-border rounded-2xl p-6 space-y-4">
+          <h2 class="text-base font-bold text-white mb-4"><span data-i18n="nav_settings">⚙️ Настройки</span> AI и Фильтров</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- UI_LANG_START -->
+          <div class="p-4 bg-surface/60 border border-border rounded-xl mb-5">
+            <h2 class="text-sm font-bold text-white mb-2" data-i18n="title_ui_settings">🌐 Язык интерфейса платформы (СНГ)</h2>
+            <label class="block text-xs text-zinc-400 mb-1.5" data-i18n="label_ui_lang">Выберите язык отображения личного кабинета:</label>
+            <select id="ui_language_select" onchange="setLanguage(this.value)" class="w-full md:w-1/2 text-xs px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white cursor-pointer focus:border-indigo-500 outline-none">
+              <option value="ru">🇷🇺 Русский</option>
+              <option value="kz">🇰🇿 Қазақша (Казахский)</option>
+              <option value="uz">🇺🇿 O'zbekcha (Узбекский)</option>
+              <option value="be">🇧🇾 Беларуская (Белорусский)</option>
+              <option value="uk">🇺🇦 Українська (Украинский)</option>
+              <option value="az">🇦🇿 Azərbaycanca (Азербайджанский)</option>
+              <option value="hy">🇦🇲 Հայերեն (Армянский)</option>
+              <option value="ka">🇬🇪 ქართული (Грузинский)</option>
+              <option value="en">🇬🇧 English</option>
+            </select>
+          </div>
+          <!-- UI_LANG_END -->
+          <div>
+              <label class="block text-xs text-zinc-400 mb-1" data-i18n="target_lang_label">Язык отклика (Target Language):</label>
+              <select id="target_language" class="w-full text-xs px-3 py-2 rounded-xl">
+                <option value="Русский">🇷🇺 Русский</option>
+                <option value="Казахский">🇰🇿 Казахский</option>
+                <option value="Узбекский">🇺🇿 Узбекский</option>
+                <option value="Белорусский">🇧🇾 Белорусский</option>
+                <option value="Украинский">🇺🇦 Украинский</option>
+                <option value="Азербайджанский">🇦🇿 Азербайджанский</option>
+                <option value="Армянский">🇦🇲 Армянский</option>
+                <option value="Грузинский">🇬🇪 Грузинский</option>
+                <option value="Английский">🇬🇧 Английский (Международный)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-zinc-400 mb-1" data-i18n="tone_label">Тон письма (Tone of Voice):</label>
+              <select id="cover_letter_tone" class="w-full text-xs px-3 py-2 rounded-xl">
+                <option value="Профессиональный и уверенный">💼 Профессиональный (Деловой)</option>
+                <option value="Креативный и нестандартный">🎨 Креативный (Для стартапов)</option>
+                <option value="Краткий технический, строго по делу">⚙️ Технический (Без воды)</option>
+                <option value="Агрессивные продажи, акцент на ROI">📈 Продающий (Акцент на KPI)</option>
+              </select>
+            </div>
+          </div>
+          <div><label class="block text-xs text-zinc-400 mb-1" data-i18n="title_stops_label">Минус-слова в ЗАГОЛОВКЕ (быстрый пропуск):</label><input type="text" id="title_stop_words" placeholder="Junior, Стажер, Ассистент" class="w-full text-xs px-3 py-2 rounded-xl"></div>
+          <div><label class="block text-xs text-zinc-400 mb-1" data-i18n="stop_words_label">Стоп-слова в описании вакансии:</label><input type="text" id="stop_words" class="w-full text-xs px-3 py-2 rounded-xl"></div>
+          <div><label class="block text-xs text-zinc-400 mb-1">Черный список:</label><input type="text" id="ignored_companies" class="w-full text-xs px-3 py-2 rounded-xl"></div>
+          <button onclick="saveAllSettings()" class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold">💾 Сохранить</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    let authMode = 'login';
+    let currentVacancies = [];
+
+    function downloadHistoryCSV() {
+      if (!currentVacancies || currentVacancies.length === 0) {
+        alert('История откликов пока пуста.');
+        return;
+      }
+      
+      const headers = ['ID Вакансии', 'Должность', 'Компания', 'Ссылка', 'Отправленное Резюме', 'Скор (%)', 'Статус', 'Обоснование AI', 'Дата и время'];
+      
+      const rows = currentVacancies.map(v => [
+        v.vacancy_id || '',
+        v.title || '',
+        v.company || '',
+        v.url || '',
+        v.selected_resume || '-',
+        v.score || 0,
+        v.status || '',
+        (v.reasoning || '').replace(/\n/g, ' '),
+        v.updated_at || ''
+      ]);
+
+      // Добавляем BOM ﻿ чтобы Excel корректно читал кириллицу (UTF-8)
+      // В качестве разделителя используем точку с запятой (;), стандарт для русского Excel
+      const csvContent = "\uFEFF" + [headers, ...rows]
+        .map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+        .join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "worker_flow_history.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    let uploadedAvatarBase64 = '';
+    let experienceBlocks = [
+      { role: 'Специалист', company: 'Компания', period: '2023 - Настоящее время', description: '• Обязанности и ключевые достижения' }
+    ];
+
+    function getToken() { return localStorage.getItem('wf_token'); }
+    async function apiFetch(url, options = {}) {
+      const token = getToken();
+      const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401) { logout(); throw new Error('Требуется вход'); }
+      return res;
+    }
+
+    function switchAuthMode(mode) {
+      authMode = mode;
+      document.getElementById('auth-tab-login').className = mode === 'login' ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white transition' : 'flex-1 py-2 text-xs font-bold rounded-lg text-zinc-400 transition';
+      document.getElementById('auth-tab-register').className = mode === 'register' ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white transition' : 'flex-1 py-2 text-xs font-bold rounded-lg text-zinc-400 transition';
+      document.getElementById('auth-submit-btn').innerText = mode === 'login' ? 'Войти в систему' : 'Зарегистрироваться';
+    }
+
+    async function submitAuth() {
+      const email = document.getElementById('auth_email').value.trim();
+      const password = document.getElementById('auth_password').value.trim();
+      const alertEl = document.getElementById('auth-alert');
+      const endpoint = authMode === 'login' ? '/api/v1/auth/login' : '/api/v1/auth/register';
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+      const data = await res.json();
+      if (!res.ok) { alertEl.className = 'p-3.5 rounded-xl text-xs border bg-rose-500/10 text-rose-400'; alertEl.innerText = data.detail || 'Ошибка'; alertEl.classList.remove('hidden'); return; }
+      if (authMode === 'register') {
+        alertEl.className = 'p-3.5 rounded-xl text-xs border bg-emerald-500/10 text-emerald-400';
+        alertEl.innerHTML = `<div>✅ ${data.message}</div><a href="${data.dev_verify_link}" class="underline font-bold block mt-1 text-indigo-400">👉 Подтвердить почту</a>`;
+        alertEl.classList.remove('hidden');
+      } else {
+        localStorage.setItem('wf_token', data.access_token);
+        initApp();
+      }
+    }
+
+    function logout() { localStorage.removeItem('wf_token'); document.getElementById('app-content').classList.add('hidden'); document.getElementById('auth-screen').classList.remove('hidden'); }
+    function copyTokenForExtension(btn) { navigator.clipboard.writeText(getToken() || ''); const old = btn.innerText; btn.innerText = '✅ Токен скопирован!'; setTimeout(() => btn.innerText = old, 1800); }
+    function switchTab(tab) {
+      ['queue', 'builder', 'kb', 'hr', 'settings'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tab);
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+      });
+      if (tab === 'builder') renderExperienceInputs();
+    }
+
+    function handlePhotoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => { uploadedAvatarBase64 = uploadEvent.target.result; updateLivePreview(); };
+      reader.readAsDataURL(file);
+    }
+
+    function renderExperienceInputs() {
+      const container = document.getElementById('experience_inputs_container');
+      container.innerHTML = experienceBlocks.map((b, idx) => `
+        <div class="p-3 bg-surface rounded-xl border border-border space-y-2 relative">
+          <button onclick="removeExperienceBlock(${idx})" class="absolute top-2 right-2 text-zinc-500 hover:text-rose-400 text-xs">✕</button>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" value="${b.role}" oninput="experienceBlocks[${idx}].role = this.value; updateLivePreview();" placeholder="Должность" class="text-xs px-2 py-1.5 rounded-lg">
+            <input type="text" value="${b.company}" oninput="experienceBlocks[${idx}].company = this.value; updateLivePreview();" placeholder="Компания" class="text-xs px-2.5 py-1.5 rounded-lg">
+          </div>
+          <input type="text" value="${b.period}" oninput="experienceBlocks[${idx}].period = this.value; updateLivePreview();" placeholder="Период" class="w-full text-xs px-2.5 py-1.5 rounded-lg">
+          <div class="flex justify-between items-center pt-1">
+            <span class="text-[10px] text-zinc-400">Обязанности / Достижения</span>
+            <button onclick="aiPolishExperience(${idx})" class="text-[10px] text-indigo-400 hover:underline">✨ AI-правка блока</button>
+          </div>
+          <textarea rows="2" oninput="experienceBlocks[${idx}].description = this.value; updateLivePreview();" placeholder="• Достижение с метрикой" class="w-full text-xs p-2 rounded-lg">${b.description}</textarea>
+        </div>
+      `).join('');
+      updateLivePreview();
+    }
+
+    function addExperienceBlock() {
+      experienceBlocks.push({ role: 'Роль', company: 'Компания', period: '2024 - 2026', description: '• Достижение' });
+      renderExperienceInputs();
+    }
+
+    function removeExperienceBlock(idx) {
+      experienceBlocks.splice(idx, 1);
+      renderExperienceInputs();
+    }
+
+    // AI-правка и проверка конкретного поля
+    async function aiPolishField(fieldType) {
+      const inputEl = document.getElementById('edit_summary');
+      const textToImprove = inputEl.value;
+      if (!textToImprove) { alert('Введите текст для улучшения'); return; }
+
+      inputEl.value = '⏳ AI проверяет и улучшает текст...';
+      try {
+        const res = await apiFetch('/api/v1/build-ats-resume', {
+          method: 'POST', body: JSON.stringify({ target_role: document.getElementById('edit_role').value || 'Специалист', raw_experience: textToImprove })
+        });
+        const data = await res.json();
+        inputEl.value = data.executive_summary || textToImprove;
+        updateLivePreview();
+      } catch (e) {
+        inputEl.value = textToImprove;
+        alert('Ошибка AI-правки');
+      }
+    }
+
+    async function aiPolishExperience(idx) {
+      const exp = experienceBlocks[idx];
+      const textToImprove = exp.description;
+      exp.description = '⏳ AI полишит текст опыта...';
+      renderExperienceInputs();
+
+      try {
+        const res = await apiFetch('/api/v1/build-ats-resume', {
+          method: 'POST', body: JSON.stringify({ target_role: exp.role, raw_experience: textToImprove })
+        });
+        const data = await res.json();
+        if (data.experience_blocks && data.experience_blocks[0]) {
+          exp.description = data.experience_blocks[0].bullets.map(b => `• ${b}`).join('\n');
+        }
+        renderExperienceInputs();
+      } catch (e) {
+        exp.description = textToImprove;
+        renderExperienceInputs();
+      }
+    }
+
+    // РЕНДЕР SUPER CUSTOM PREVIEW (Шрифты, цвета, стили)
+    function updateLivePreview() {
+      const name = document.getElementById('edit_name').value || 'Имя Фамилия';
+      const role = document.getElementById('edit_role').value || 'Желаемая должность';
+      const email = document.getElementById('edit_email').value || 'email@example.com';
+      const phone = document.getElementById('edit_phone').value || '+7 (999) 000-00-00';
+      const summary = document.getElementById('edit_summary').value || 'Профессиональное описание...';
+      const skillsRaw = document.getElementById('edit_skills').value || 'Навык 1, Навык 2';
+
+      const layout = document.getElementById('cfg_layout').value;
+      const font = document.getElementById('cfg_font').value;
+      const accentColor = document.getElementById('cfg_accent').value;
+      const cardBgType = document.getElementById('cfg_card_bg').value;
+
+      document.getElementById('prev_name').innerText = name;
+      document.getElementById('prev_role').innerText = role;
+      document.getElementById('prev_contacts').innerText = `${email} • ${phone}`;
+      document.getElementById('prev_summary').innerText = summary;
+
+      document.getElementById('prev_role').style.color = accentColor;
+      document.getElementById('prev_sum_title').style.color = accentColor;
+      document.getElementById('prev_exp_title').style.color = accentColor;
+      document.getElementById('prev_ski_title').style.color = accentColor;
+
+      const avatarEl = document.getElementById('prev_avatar');
+      if (uploadedAvatarBase64) {
+        avatarEl.src = uploadedAvatarBase64;
+        avatarEl.style.borderColor = accentColor;
+        avatarEl.classList.remove('hidden');
+      } else {
+        avatarEl.classList.add('hidden');
+      }
+
+      document.getElementById('prev_experience_list').innerHTML = experienceBlocks.map(b => `
+        <div class="space-y-1">
+          <div class="flex justify-between font-bold">
+            <span>${b.role} (${b.company})</span>
+            <span class="text-[11px] opacity-75">${b.period}</span>
+          </div>
+          <p class="whitespace-pre-line opacity-90">${b.description}</p>
+        </div>
+      `).join('');
+
+      const skills = skillsRaw.split(',').map(s => s.trim()).filter(Boolean);
+      document.getElementById('prev_skills_list').innerHTML = skills.map(s => `
+        <span class="px-2.5 py-0.5 rounded text-[11px] font-semibold" style="background: ${accentColor}20; color: ${accentColor}; border: 1px solid ${accentColor}40;">${s}</span>
+      `).join('');
+
+      const card = document.getElementById('resume-preview-card');
+      card.style.fontFamily = font;
+
+      if (layout === 'modern-dark') {
+        card.className = 'flex-1 bg-[#121216] border border-[#272732] rounded-2xl p-8 space-y-6 shadow-2xl text-zinc-200 min-h-[600px]';
+      } else if (layout === 'classic-paper') {
+        card.className = 'flex-1 bg-white border border-zinc-300 rounded-2xl p-8 space-y-6 shadow-xl text-zinc-900 min-h-[600px]';
+      } else if (layout === 'executive-minimal') {
+        card.className = 'flex-1 bg-[#0f172a] border border-slate-800 rounded-2xl p-8 space-y-6 shadow-2xl text-slate-100 min-h-[600px]';
+      } else if (layout === 'creative-accent') {
+        card.className = 'flex-1 bg-gradient-to-br from-purple-950/40 to-surface border border-purple-500/30 rounded-2xl p-8 space-y-6 shadow-2xl text-zinc-100 min-h-[600px]';
+      } else if (layout === 'neo-brutalism') {
+        card.className = 'flex-1 bg-yellow-50 text-zinc-900 border-4 border-black rounded-xl p-8 space-y-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] min-h-[600px]';
+      }
+    }
+
+    async function saveMagicResumeToPool() {
+      const title = document.getElementById('edit_role').value || 'Резюме';
+      const content = `ФИО: ${document.getElementById('edit_name').value}\nСаммари: ${document.getElementById('edit_summary').value}\nОпыт: ${JSON.stringify(experienceBlocks)}\nНавыки: ${document.getElementById('edit_skills').value}`;
+      await apiFetch('/api/v1/resumes', { method: 'POST', body: JSON.stringify({ title, content }) });
+      loadDashboard();
+      alert('✅ Резюме сохранено в пул автооткликов!');
+    }
+
+    async function loadDashboard() {
+      if (!getToken()) return;
+      const res = await apiFetch('/api/v1/dashboard');
+      const data = await res.json();
+      const { user, stats, cfg, resumes } = data;
+      document.getElementById('user-email-label').innerText = user.email;
+      
+      const codeEl = document.getElementById('ui-sync-code');
+      const tgEl = document.getElementById('ui-tg-status');
+      codeEl.innerText = user.sync_code || 'НЕ_ВЫДАН';
+      
+      if (user.telegram_id) {
+        tgEl.innerText = 'TG: ' + user.telegram_id;
+        tgEl.className = 'text-[10px] font-bold px-2 py-1 rounded bg-emerald-500/15 text-emerald-400';
+      } else {
+        tgEl.innerText = 'TG: Отвязан';
+        tgEl.className = 'text-[10px] font-bold px-2 py-1 rounded bg-amber-500/15 text-amber-400';
+      }
+      document.getElementById('kpi-total').innerText = stats.total;
+      document.getElementById('kpi-applied').innerText = stats.applied;
+      document.getElementById('kpi-skipped').innerText = stats.skipped;
+      document.getElementById('metric-today').innerText = stats.today_applied;
+      document.getElementById('metric-limit').innerText = cfg.daily_limit || 50;
+
+      ['target_language', 'cover_letter_tone', 'title_stop_words', 'stop_words', 'ignored_companies', 'career_legend', 'salary', 'telegram', 'whatsapp', 'phone_contact', 'email_contact', 'extra_contact'].forEach(f => {
+        const el = document.getElementById(f);
+        if (el && document.activeElement !== el && cfg[f] !== undefined) el.value = cfg[f];
+      });
+
+      document.getElementById('resumes-list').innerHTML = resumes.map(r => `
+        <div class="p-3.5 bg-surface border border-border rounded-xl">
+          <div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-indigo-400">${r.title}</span><button onclick="deleteResume(${r.id})" class="text-zinc-500 hover:text-rose-400 text-xs">Удалить</button></div>
+          <p class="text-[11px] text-zinc-400 line-clamp-3">${r.content}</p>
+        </div>
+      `).join('');
+
+      currentVacancies = stats.vacancies || [];
+      document.getElementById('vacancies-tbody').innerHTML = currentVacancies.map(v => `
+        <tr>
+          <td class="p-3.5"><a href="${v.url}" target="_blank" class="text-white font-semibold hover:text-indigo-400">${v.title || v.vacancy_id}</a><div class="text-[11px] text-zinc-500">${v.company || ''}</div></td>
+          <td class="p-3.5">${v.selected_resume || '-'}</td>
+          <td class="p-3.5 font-bold text-emerald-400">${v.score || 0}%</td>
+          <td class="p-3.5">${v.status}</td>
+          <td class="p-3.5 text-[11px] text-zinc-400">${v.reasoning || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function saveAllSettings() {
+      const payload = {};
+      ['target_language', 'cover_letter_tone', 'title_stop_words', 'stop_words', 'ignored_companies', 'career_legend', 'salary', 'telegram', 'whatsapp', 'phone_contact', 'email_contact', 'extra_contact', 'delay_min', 'delay_max'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) payload[id] = el.value.trim();
+      });
+      await apiFetch('/api/v1/settings', { method: 'POST', body: JSON.stringify(payload) });
+      loadDashboard();
+    }
+
+    async function addResume() {
+      const title = document.getElementById('new_resume_title').value.trim();
+      const content = document.getElementById('new_resume_content').value.trim();
+      if (!title || !content) return;
+      await apiFetch('/api/v1/resumes', { method: 'POST', body: JSON.stringify({ title, content }) });
+      document.getElementById('new_resume_title').value = '';
+      document.getElementById('new_resume_content').value = '';
+      loadDashboard();
+    }
+
+    async function deleteResume(id) { await apiFetch(`/api/v1/resumes/${id}`, { method: 'DELETE' }); loadDashboard(); }
+
+    async function generateHRReply() {
+      const msg = document.getElementById('hr_message').value.trim();
+      const hint = document.getElementById('hr_hint').value.trim();
+      const res = await apiFetch('/api/v1/hr-reply', { method: 'POST', body: JSON.stringify({ hr_message: msg, user_hint: hint }) });
+      const data = await res.json();
+      document.getElementById('hr_reply_output').value = data.reply || '';
+    }
+
+    function initApp() {
+      if (getToken()) {
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('app-content').classList.remove('hidden');
+        loadDashboard();
+        renderExperienceInputs();
+      } else {
+        document.getElementById('auth-screen').classList.remove('hidden');
+        document.getElementById('app-content').classList.add('hidden');
+      }
+    }
+    initApp();
+  </script>
+
+<script>
+  // Нативный словарь интерфейса
+  const i18n = {
+    ru: {
+      nav_dashboard: "📊 Дашборд", nav_queue: "🚀 Очередь", nav_resumes: "📄 Мои Резюме", nav_settings: "⚙️ Настройки",
+      stat_resumes: "Добавлено Резюме", stat_waiting: "Ждут Отправки", stat_sent: "Успешно Отправлено",
+      title_queue: "Управление Очередью", title_ai: "⚙️ Настройки AI и Фильтров", title_security: "🛡️ Разрешения и Анти-бан",
+      title_ui_settings: "🌐 Интерфейс платформы", label_ui_lang: "Язык приложения:"
+    },
+    kz: {
+      nav_dashboard: "📊 Басқару тақтасы", nav_queue: "🚀 Кезек", nav_resumes: "📄 Түйіндемелер", nav_settings: "⚙️ Баптаулар",
+      stat_resumes: "Қосылған түйіндемелер", stat_waiting: "Жіберуді күтуде", stat_sent: "Сәтті жіберілді",
+      title_queue: "Кезек басқару", title_ai: "⚙️ AI және сүзгілер", title_security: "🛡️ Рұқсаттар және Анти-бан",
+      title_ui_settings: "🌐 Платформа интерфейсі", label_ui_lang: "Қосымша тілі:"
+    },
+    uz: {
+      nav_dashboard: "📊 Boshqaruv paneli", nav_queue: "🚀 Navbat", nav_resumes: "📄 Rezyumelar", nav_settings: "⚙️ Sozlamalar",
+      stat_resumes: "Qo'shilgan rezyumelar", stat_waiting: "Yuborish kutilmoqda", stat_sent: "Muvaffaqiyatli yuborildi",
+      title_queue: "Navbatni boshqarish", title_ai: "⚙️ AI va Filtrlar", title_security: "🛡️ Ruxsatlar va Anti-ban",
+      title_ui_settings: "🌐 Platforma interfeysi", label_ui_lang: "Ilova tili:"
+    },
+    be: {
+      nav_dashboard: "📊 Панэль кіравання", nav_queue: "🚀 Чарга", nav_resumes: "📄 Мае Рэзюмэ", nav_settings: "⚙️ Налады",
+      stat_resumes: "Дададзена Рэзюмэ", stat_waiting: "Чакаюць Адпраўкі", stat_sent: "Паспяхова Адпраўлена",
+      title_queue: "Кіраванне Чаргой", title_ai: "⚙️ Налады AI і Фільтраў", title_security: "🛡️ Дазволы і Анты-бан",
+      title_ui_settings: "🌐 Інтэрфейс платформы", label_ui_lang: "Мова праграмы:"
+    },
+    en: {
+      nav_dashboard: "📊 Dashboard", nav_queue: "🚀 Queue", nav_resumes: "📄 My Resumes", nav_settings: "⚙️ Settings",
+      stat_resumes: "Resumes Added", stat_waiting: "Pending Apply", stat_sent: "Successfully Sent",
+      title_queue: "Queue Management", title_ai: "⚙️ AI & Filters Settings", title_security: "🛡️ Security & Anti-ban",
+      title_ui_settings: "🌐 Platform Interface", label_ui_lang: "App Language:"
+    }
+  };
+
+  function setLanguage(lang) {
+    if (!i18n[lang]) return;
+    
+    // Сохраняем выбор пользователя
+    localStorage.setItem('ui_language', lang);
+    
+    // Синхронизируем ВСЕ выпадающие списки языков на странице
+    document.querySelectorAll('select[onchange="setLanguage(this.value)"]').forEach(el => el.value = lang);
+    
+    // Переводим все элементы с атрибутом data-i18n
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (i18n[lang][key]) {
+        el.innerHTML = i18n[lang][key];
+      }
+    });
+  }
+
+  // Применяем сохраненный язык при загрузке страницы
+  document.addEventListener('DOMContentLoaded', () => {
+    const savedLang = localStorage.getItem('ui_language') || 'ru';
+    setLanguage(savedLang);
+  });
+</script>
+
+<!-- I18N_SCRIPT_START -->
+<script>
+  const i18nDict = {
+    ru: {
+      title_ui_settings: "🌐 Язык интерфейса платформы (СНГ)",
+      label_ui_lang: "Выберите язык отображения личного кабинета:",
+      nav_dashboard: "📊 Дашборд", nav_queue: "🚀 Очередь", nav_resumes: "📄 Мои Резюме", nav_settings: "⚙️ Настройки",
+      stat_resumes: "Добавлено Резюме", stat_waiting: "Ждут Отправки", stat_sent: "Успешно Отправлено",
+      title_queue: "Управление Очередью", title_ai: "⚙️ Настройки AI и Фильтров", title_security: "🛡️ Разрешения и Анти-бан",
+      search_query_label: "Поисковый запрос:", search_area_label: "Регион/Город:",
+      stop_words_label: "Стоп-слова в описании вакансии:", ignored_companies_label: "Игнорируемые компании:",
+      btn_save_config: "💾 Сохранить настройки", btn_start_worker: "▶ Запустить воркер", btn_stop_worker: "⏹ Остановить",
+      tab_dashboard: "📊 Дашборд", tab_queue: "🚀 Очередь откликов", tab_resumes: "📄 Управление резюме", tab_settings: "⚙️ Настройки",
+      target_lang_label: "Язык отклика (Target Language):", tone_label: "Тон письма (Tone of Voice):",
+      title_stops_label: "Минус-слова в ЗАГОЛОВКЕ (быстрый пропуск):",
+      delay_min_label: "Мин. пауза (сек):", delay_max_label: "Макс. пауза (сек):", stealth_mode_label: "Режим "Стелс""
+    },
+    kz: {
+      title_ui_settings: "🌐 Платформа интерфейсінің тілі",
+      label_ui_lang: "Жеке кабинеттің тілін таңдаңыз:",
+      nav_dashboard: "📊 Басқару тақтасы", nav_queue: "🚀 Кезек", nav_resumes: "📄 Түйіндемелер", nav_settings: "⚙️ Баптаулар",
+      stat_resumes: "Қосылған түйіндемелер", stat_waiting: "Жіберуді күтуде", stat_sent: "Сәтті жіберілді",
+      title_queue: "Кезек басқару", title_ai: "⚙️ AI және сүзгілер", title_security: "🛡️ Рұқсаттар және Анти-бан",
+      search_query_label: "Іздеу сұранысы:", search_area_label: "Аймақ/Қала:",
+      stop_words_label: "Сипаттамадағы стоп-сөздер:", ignored_companies_label: "Елеусіз қалдырылатын компаниялар:",
+      btn_save_config: "💾 Баптауларды сақтау", btn_start_worker: "▶ Жұмысты бастау", btn_stop_worker: "⏹ Тоқтату",
+      tab_dashboard: "📊 Басқару тақтасы", tab_queue: "🚀 Кезек", tab_resumes: "📄 Түйіндемелер", tab_settings: "⚙️ Баптаулар",
+      target_lang_label: "Жауап тілі (Target Language):", tone_label: "Хат стилі (Tone of Voice):",
+      title_stops_label: "АТАУЫНДАҒЫ минус-сөздер:",
+      delay_min_label: "Мин. пауза (сек):", delay_max_label: "Макс. пауза (сек):", stealth_mode_label: ""Стелс" режимі"
+    },
+    uz: {
+      title_ui_settings: "🌐 Platforma interfeysi tili",
+      label_ui_lang: "Shaxsiy kabinet tilini tanlang:",
+      nav_dashboard: "📊 Boshqaruv paneli", nav_queue: "🚀 Navbat", nav_resumes: "📄 Rezyumelar", nav_settings: "⚙️ Sozlamalar",
+      stat_resumes: "Qo'shilgan rezyumelar", stat_waiting: "Yuborish kutilmoqda", stat_sent: "Muvaffaqiyatli yuborildi",
+      title_queue: "Navbatni boshqarish", title_ai: "⚙️ AI va Filtrlar", title_security: "🛡️ Ruxsatlar va Anti-ban",
+      search_query_label: "Qidiruv so'rovi:", search_area_label: "Mintaqa/Shahar:",
+      stop_words_label: "Vakansiya tavsifidagi stop-so'zlar:", ignored_companies_label: "E'tiborsiz kompaniyalar:",
+      btn_save_config: "💾 Sozlamalarni saqlash", btn_start_worker: "▶ Ishga tushirish", btn_stop_worker: "⏹ To'xtatish",
+      tab_dashboard: "📊 Boshqaruv paneli", tab_queue: "🚀 Navbat", tab_resumes: "📄 Rezyumelar", tab_settings: "⚙️ Sozlamalar",
+      target_lang_label: "Javob tili (Target Language):", tone_label: "Xat uslubi (Tone of Voice):",
+      title_stops_label: "Sarlavhadagi minus-so'zlar:",
+      delay_min_label: "Min. tanaffus (sek):", delay_max_label: "Maks. tanaffus (sek):", stealth_mode_label: ""Stels" rejimi"
+    },
+    be: {
+      title_ui_settings: "🌐 Мова інтэрфейсу платформы",
+      label_ui_lang: "Абярыце мову асабістага кабінета:",
+      nav_dashboard: "📊 Панэль кіравання", nav_queue: "🚀 Чарга", nav_resumes: "📄 Мае Рэзюмэ", nav_settings: "⚙️ Налады",
+      stat_resumes: "Дададзена Рэзюмэ", stat_waiting: "Чакаюць Адпраўкі", stat_sent: "Паспяхова Адпраўлена",
+      title_queue: "Кіраванне Чаргой", title_ai: "⚙️ Налады AI і Фільтраў", title_security: "🛡️ Дазволы і Анты-бан",
+      search_query_label: "Пошукавы запыт:", search_area_label: "Рэгіён/Горад:",
+      stop_words_label: "Стоп-словы ў апісанні:", ignored_companies_label: "Ігнаруемыя кампаніі:",
+      btn_save_config: "💾 Захаваць налады", btn_start_worker: "▶ Запусціць", btn_stop_worker: "⏹ Спыніць",
+      tab_dashboard: "📊 Панэль кіравання", tab_queue: "🚀 Чарга", tab_resumes: "📄 Мае Рэзюмэ", tab_settings: "⚙️ Налады",
+      target_lang_label: "Мова адказу:", tone_label: "Стыль пісьма:",
+      title_stops_label: "Мінус-словы ў ЗАГАЛОВКУ:",
+      delay_min_label: "Мін. пауза (сек):", delay_max_label: "Макс. пауза (сек):", stealth_mode_label: "Рэжым "Стэльс""
+    },
+    uk: {
+      title_ui_settings: "🌐 Мова інтерфейсу платформи",
+      label_ui_lang: "Оберіть мову відображення кабінету:",
+      nav_dashboard: "📊 Дашборд", nav_queue: "🚀 Черга", nav_resumes: "📄 Мої Резюме", nav_settings: "⚙️ Налаштування",
+      stat_resumes: "Додано Резюме", stat_waiting: "Чекають Відправки", stat_sent: "Успішно Відправлено",
+      title_queue: "Керування Чергою", title_ai: "⚙️ Налаштування AI та Фільтрів", title_security: "🛡️ Дозволи та Анти-бан",
+      search_query_label: "Пошуковий запит:", search_area_label: "Регіон/Місто:",
+      stop_words_label: "Стоп-слова в описі вакансії:", ignored_companies_label: "Ігноровані компанії:",
+      btn_save_config: "💾 Зберегти налаштування", btn_start_worker: "▶ Запустити воркер", btn_stop_worker: "⏹ Зупинити",
+      tab_dashboard: "📊 Дашборд", tab_queue: "🚀 Черга", tab_resumes: "📄 Мої Резюме", tab_settings: "⚙️ Налаштування",
+      target_lang_label: "Мова відгуку:", tone_label: "Тон листа:",
+      title_stops_label: "Мінус-слова в ЗАГОЛОВКУ:",
+      delay_min_label: "Мін. пауза (сек):", delay_max_label: "Макс. пауза (сек):", stealth_mode_label: "Режим "Стелс""
+    },
+    az: {
+      title_ui_settings: "🌐 Platforma interfeysinin dili",
+      label_ui_lang: "Şəxsi kabinetin dilini seçin:",
+      nav_dashboard: "📊 İdarə paneli", nav_queue: "🚀 Növbə", nav_resumes: "📄 CV-lərim", nav_settings: "⚙️ Tənzimləmələr",
+      stat_resumes: "Əlavə edilmiş CV", stat_waiting: "Göndərilmə gözləyir", stat_sent: "Uğurla göndərildi",
+      title_queue: "Növbənin idarə edilməsi", title_ai: "⚙️ AI və Filtrlər", title_security: "🛡️ İcazələr və Anti-ban",
+      search_query_label: "Axtarış sorgusu:", search_area_label: "Bölgə/Şəhər:",
+      stop_words_label: "Stop-sözlər:", ignored_companies_label: "İгнаруемые компании:",
+      btn_save_config: "💾 Ayarları yadda saxla", btn_start_worker: "▶ Başlat", btn_stop_worker: "⏹ Dayandır",
+      tab_dashboard: "📊 İdarə paneli", tab_queue: "🚀 Növbə", tab_resumes: "📄 CV-lərim", tab_settings: "⚙️ Tənzimləmələr",
+      target_lang_label: "Cavab dili:", tone_label: "Məktub tərzi:",
+      title_stops_label: "Başlıqda mənfi sözlər:",
+      delay_min_label: "Min. fasilə (san):", delay_max_label: "Maks. fasilə (san):", stealth_mode_label: ""Stealth" rejimi"
+    },
+    hy: {
+      title_ui_settings: "🌐 Հարթակի ինտերֆեյսի լեզուն",
+      label_ui_lang: "Ընտրեք անձնական գրասենյակի լեզուն.",
+      nav_dashboard: "📊 Վահանակ", nav_queue: "🚀 Հերթ", nav_resumes: "📄 Իմ Ռեզյումեները", nav_settings: "⚙️ Կարգավորումներ",
+      stat_resumes: "Ավելացված ռեզյումեներ", stat_waiting: "Սպասում է ուղարկման", stat_sent: "Հաջողությամբ ուղարկվեց",
+      title_queue: "Հերթի կառավարում", title_ai: "⚙️ AI և Ֆիլտրեր", title_security: "🛡️ Թույլտվություններ և Անտի-բան",
+      search_query_label: "Որոնման հարցում.", search_area_label: "Տարածաշրջան/Քաղաք.",
+      stop_words_label: "Կանգառ-բառեր նկարագրության մեջ.", ignored_companies_label: "Անտեսվող ընկերություններ.",
+      btn_save_config: "💾 Պահպանել կարգավորումները", btn_start_worker: "▶ Մեկնարկ", btn_stop_worker: "⏹ Կանգնեցնել",
+      tab_dashboard: "📊 Վահանակ", tab_queue: "🚀 Հերթ", tab_resumes: "📄 Իմ Ռեզյումեները", tab_settings: "⚙️ Կարգավորումներ",
+      target_lang_label: "Պատասխանի լեզու.", tone_label: "Նամակի ոճը.",
+      title_stops_label: "Բացառվող բառեր վերնագրում.",
+      delay_min_label: "Նվազ. դադար (վրկ):", delay_max_label: "Առավ. դադար (վրկ):", stealth_mode_label: ""Stealth" ռեժիմ"
+    },
+    ka: {
+      title_ui_settings: "🌐 პლატფორმის ინტერфейსის ენა",
+      label_ui_lang: "აირჩიეთ პირადი კაბინეტის ენა:",
+      nav_dashboard: "📊 მართვის პანელი", nav_queue: "🚀 რიგი", nav_resumes: "📄 ჩემი რეზიუმეები", nav_settings: "⚙️ პარამეტრები",
+      stat_resumes: "დამატებული რეზიუმე", stat_waiting: "ელოდება გაგზავნას", stat_sent: "წარმატებით გაიგზავნა",
+      title_queue: "რიგის მართვა", title_ai: "⚙️ AI და ფილტრები", title_security: "🛡️ ნებართვები და ანტი-ბანი",
+      search_query_label: "ძიების მოთხოვნა:", search_area_label: "რეგიონი/ქალაქი:",
+      stop_words_label: "სტოპ-სიტყვები აღწერაში:", ignored_companies_label: "იგნორირებული კომპანიები:",
+      btn_save_config: "💾 პარამეტრების შენახვა", btn_start_worker: "▶ დაწყება", btn_stop_worker: "⏹ შეჩერება",
+      tab_dashboard: "📊 მართვის პანელი", tab_queue: "🚀 რიგი", tab_resumes: "📄 რეზიუმეები", tab_settings: "⚙️ პარამეტრები",
+      target_lang_label: "პასუხის ენა:", tone_label: "წერილის სტილი:",
+      title_stops_label: "მინუს-სიტყვები სათაურში:",
+      delay_min_label: "მინ. პაუზა (წმ):", delay_max_label: "მაქს. პაუზა (წმ):", stealth_mode_label: ""Stealth" რეჟიმი"
+    },
+    en: {
+      title_ui_settings: "🌐 Platform Interface Language",
+      label_ui_lang: "Select dashboard display language:",
+      nav_dashboard: "📊 Dashboard", nav_queue: "🚀 Queue", nav_resumes: "📄 My Resumes", nav_settings: "⚙️ Settings",
+      stat_resumes: "Resumes Added", stat_waiting: "Pending Apply", stat_sent: "Successfully Sent",
+      title_queue: "Queue Management", title_ai: "⚙️ AI & Filters Settings", title_security: "🛡️ Security & Anti-ban",
+      search_query_label: "Search Query:", search_area_label: "Region/City:",
+      stop_words_label: "Stop words in job description:", ignored_companies_label: "Ignored companies:",
+      btn_save_config: "💾 Save Settings", btn_start_worker: "▶ Start Worker", btn_stop_worker: "⏹ Stop Worker",
+      tab_dashboard: "📊 Dashboard", tab_queue: "🚀 Queue", tab_resumes: "📄 My Resumes", tab_settings: "⚙️ Settings",
+      target_lang_label: "Target Language:", tone_label: "Tone of Voice:",
+      title_stops_label: "Title Stop Words (fast skip):",
+      delay_min_label: "Min Delay (sec):", delay_max_label: "Max Delay (sec):", stealth_mode_label: "Stealth Mode"
+    }
+  };
+
+  function setLanguage(lang) {
+    if (!i18nDict[lang]) return;
+    localStorage.setItem('ui_language', lang);
+    
+    const sel = document.getElementById('ui_language_select');
+    if (sel) sel.value = lang;
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (i18nDict[lang][key]) {
+        el.innerText = i18nDict[lang][key];
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const savedLang = localStorage.getItem('ui_language') || 'ru';
+    setLanguage(savedLang);
+  });
+</script>
+<!-- I18N_SCRIPT_END -->
+</body>
+</html>

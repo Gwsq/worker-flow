@@ -1,0 +1,32 @@
+groups:
+  - name: WorkerFlowSaaS
+    rules:
+      # Алерт: Заканчиваются деньги на OpenRouter
+      - alert: LowLLMBalance
+        expr: workerflow_openrouter_credits_remaining_dollars < 2.0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "⚠️ Баланс OpenRouter скоро закончится!"
+          description: "На счету API-ключа осталось всего ${{ $value }}. Нужно срочно пополнить, иначе генерация откликов остановится."
+
+      # Алерт: Бэкенд упал (Prometheus не может собрать метрики)
+      - alert: BackendDown
+        expr: up{job="worker_flow_backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "❌ Worker Flow API недоступно"
+          description: "Prometheus не может достучаться до /metrics бэкенда."
+
+      # Алерт: Аномально высокий расход токенов за 5 минут (защита от спама/ддоса)
+      - alert: HighTokenUsageSpike
+        expr: rate(workerflow_llm_tokens_total[5m]) > 5000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "📈 Аномальный расход токенов"
+          description: "Платформа сжигает более 5000 токенов в секунду за последние 5 минут. Проверьте логи."
